@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IsaacBrainRT</title>
+
+  <!-- Social/Share Preview -->
+  <meta property="og:title" content="IsaacBrainRT" />
+  <meta property="og:description" content="A floating brain in the dream void." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://yourdomain.com/preview.jpg" /> <!-- optional -->
+  <meta name="theme-color" content="#4c0070" />
+
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #0a0010 0%, #000 100%);
+      font-family: monospace;
+      color: #ccc;
+    }
+    canvas {
+      display: block;
+    }
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.2rem;
+      color: #9a5cff;
+      letter-spacing: 1px;
+      animation: pulse 1.4s infinite alternate;
+    }
+    @keyframes pulse {
+      from { opacity: 0.4; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">loading brain...</div>
+
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164/build/three.module.js";
+    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.164/examples/jsm/loaders/GLTFLoader.js";
+    import { RGBELoader } from "https://cdn.jsdelivr.net/npm/three@0.164/examples/jsm/loaders/RGBELoader.js";
+    import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.164/examples/jsm/controls/OrbitControls.js";
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 3.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(devicePixelRatio);
+    renderer.setClearColor(0x000000);
+    document.body.appendChild(renderer.domElement);
+
+    // Volumetric haze/fog
+    scene.fog = new THREE.FogExp2(0x0a0015, 0.15);
+
+    // Lighting
+    const ambient = new THREE.AmbientLight(0x7f00ff, 0.3);
+    scene.add(ambient);
+
+    const rimLight = new THREE.DirectionalLight(0xaa55ff, 2.5);
+    rimLight.position.set(2, 1, 3);
+    scene.add(rimLight);
+
+    const backLight = new THREE.PointLight(0x5500ff, 2.0, 10);
+    backLight.position.set(-2, -1, -3);
+    scene.add(backLight);
+
+    // Soft drifting particles (fog illusion)
+    const particles = new THREE.Group();
+    const geo = new THREE.SphereGeometry(1, 8, 8);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x6633cc, transparent: true, opacity: 0.06 });
+    for (let i = 0; i < 100; i++) {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set((Math.random()-0.5)*10, (Math.random()-0.5)*10, (Math.random()-0.5)*10);
+      const s = Math.random() * 0.6 + 0.2;
+      m.scale.set(s, s, s);
+      particles.add(m);
+    }
+    scene.add(particles);
+
+    // Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+
+    // Load the brain model
+    const loader = new GLTFLoader();
+    const texLoader = new THREE.TextureLoader();
+
+    const texture = texLoader.load('Material_0.001_baseColor.jpeg', () => {
+      texture.encoding = THREE.sRGBEncoding;
+    });
+
+    loader.load('stylizedhumanbrain.glb', (gltf) => {
+      const brain = gltf.scene;
+      brain.traverse((child) => {
+        if (child.isMesh) {
+          child.material.map = texture;
+          child.material.needsUpdate = true;
+        }
+      });
+      brain.scale.set(1.2, 1.2, 1.2);
+      scene.add(brain);
+      document.getElementById('loading').remove();
+
+      // Animate
+      let t = 0;
+      function animate() {
+        requestAnimationFrame(animate);
+        t += 0.005;
+        brain.rotation.y += 0.003;
+        brain.position.y = Math.sin(t) * 0.1;
+        particles.rotation.y += 0.0008;
+        particles.rotation.x += 0.0005;
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  </script>
+</body>
+</html>
